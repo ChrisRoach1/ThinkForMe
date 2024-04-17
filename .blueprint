@@ -1,0 +1,7 @@
+created:
+    - database/factories/ProjectFactory.php
+    - database/migrations/2024_04_11_235500_create_projects_table.php
+    - app/Models/Project.php
+models:
+    User: { name: string, email: string, email_verified_at: 'datetime nullable', password: string, remember_token: 'string nullable' }
+    Project: { DeveloperLevel: string, TechSpecs: 'string:500', GeneratedProjectTitle: string, GeneratedIdea: string }

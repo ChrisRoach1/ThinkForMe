@@ -1,0 +1,6 @@
+models:
+  Project:
+    DeveloperLevel: string
+    TechSpecs: string:500
+    GeneratedProjectTitle: string
+    GeneratedIdea: string
