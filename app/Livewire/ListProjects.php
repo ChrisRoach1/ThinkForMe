@@ -32,10 +32,12 @@ class ListProjects extends Component implements HasForms, HasTable
             ->actions([
                 Action::make('delete')
                     ->requiresConfirmation()
+                    ->iconButton()
                     ->icon('heroicon-m-trash')
                     ->color("danger")
                     ->action(fn (Project $record) => $record->delete()),
                 Action::make('View')
+                    ->iconButton()
                     ->icon('heroicon-m-eye')
                     ->modalContent(fn (Project $record): View => view(
                         'project',
