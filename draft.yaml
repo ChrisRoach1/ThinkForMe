@@ -4,3 +4,5 @@ models:
     TechSpecs: string:500
     GeneratedProjectTitle: string
     GeneratedIdea: string
+
+

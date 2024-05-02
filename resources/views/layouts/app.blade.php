@@ -22,7 +22,7 @@
             }
         </style>
     </head>
-    <body class="font-sans antialiased">
+    <body class="font-sans antialiased bg-gray-50">
         <div class="min-h-screen">
             <livewire:layout.navigation />
 

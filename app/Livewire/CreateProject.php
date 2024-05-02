@@ -3,6 +3,7 @@
 namespace App\Livewire;
 
 use App\Enums\DeveloperLevel;
+use App\Models\Image;
 use App\Models\Project;
 use Filament\Actions\Contracts\HasActions;
 use Filament\Forms\Components\Actions;
@@ -17,17 +18,20 @@ use Filament\Forms\Concerns\InteractsWithForms;
 use Filament\Forms\Contracts\HasForms;
 use Filament\Forms\Form;
 use Filament\Notifications\Notification;
+use Illuminate\Support\Facades\Storage;
 use JetBrains\PhpStorm\NoReturn;
 use Livewire\Component;
 use Filament\Actions\Concerns\InteractsWithActions;
 use OpenAI\Laravel\Facades\OpenAI;
+use OpenAI\Responses\Chat\CreateResponse;
+use phpDocumentor\Reflection\DocBlock\Description;
 
 class CreateProject extends Component implements HasForms, HasActions
 {
     use InteractsWithForms;
     use InteractsWithActions;
 
-
+    public int $creditCost = 1;
     public Project $project;
     public ?array $data = [];
 
@@ -35,7 +39,6 @@ class CreateProject extends Component implements HasForms, HasActions
     {
         $this->form->fill();
     }
-
     public function form(Form $form): Form
     {
         return
@@ -44,15 +47,23 @@ class CreateProject extends Component implements HasForms, HasActions
                     Section::make("Generate")
                         ->schema([
                             Select::make('DeveloperLevel')
-                                ->enum(DeveloperLevel::class)
-                                ->options(DeveloperLevel::class)
+                                ->options([
+                                    "Junior" => "Junior",
+                                    "Mid-Level" => "Mid-Level",
+                                    "Senior" => "Senior",
+                                    "Architect" => "Architect",
+                                ])
                                 ->required(),
                             Textarea::make('TechSpecs')
-                                ->helperText("Provide what tech you want to use, languages, etc...")
+                                ->helperText("Provide what tech you want to use, languages, rough ideas for the project, etc...")
                                 ->required()
                                 ->maxLength(500),
                             Actions::make([
                                 Action::make('Create')
+                                    ->requiresConfirmation()
+                                    ->modalHeading('Create Image')
+                                    ->modalDescription("Creating an image will cost you {$this->creditCost} credits, are you sure?")
+                                    ->modalSubmitActionLabel('Yes, generate it')
                                     ->action(fn() => $this->create())
                             ])
                         ])->collapsible()
@@ -70,50 +81,83 @@ class CreateProject extends Component implements HasForms, HasActions
     #[NoReturn]
     public function create(): void
     {
+        $result = $this->CallPrompt();
+        $decodedContent = json_decode($result->choices[0]->message->content, true);
+        $retryCount = 0;
 
-        $prompt = "Pretend you are a {$this->form->getState()["data"]["DeveloperLevel"]} level software engineer 
-                     and you're looking to use the following tech specifications to build a new side project: \"{$this->form->getState()["data"]["TechSpecs"]}\".
-                     These tech specifications are could be what certain tech to use, architecture patterns, etc...
-                     What sort of app would you build that that could be turned into a profitable SaaS? Please also give me a title for the application and don't speak in the first person
+        while($decodedContent == null && $retryCount < 4){
+            $result = $this->callPrompt(true);
+            $decodedContent = json_decode($result->choices[0]->message->content, true);
+            $retryCount++;
+        }
+
+        if($decodedContent == null){
+            Notification::make()
+                ->title('An error has occurred')
+                ->body("Can't generate project at this time, please try again.")
+                ->danger()
+                ->color('danger')
+                ->duration(5000)
+                ->send();
+
+            $this->redirect('/dashboard');
+        }else{
+            Project::create([
+                "user_id" => auth()->id(),
+                "DeveloperLevel" => $this->form->getState()["data"]["DeveloperLevel"],
+                "TechSpecs" => $this->form->getState()["data"]["TechSpecs"],
+                "GeneratedProjectTitle" => $decodedContent["Title"],
+                "GeneratedIdea" => $decodedContent["Idea"],
+            ]);
+
+            auth()->user()->decrement('credits', $this->creditCost);
+
+            Notification::make()
+                ->title('Saved successfully')
+                ->success()
+                ->color('success')
+                ->duration(5000)
+                ->send();
+
+            $this->redirect('/dashboard');
+        }
+    }
+
+    private function CallPrompt($retry = false): CreateResponse
+    {
+
+        $previousTitles = auth()->user()->projects()->pluck('GeneratedProjectTitle');
+        $prevTitleString = "";
+
+        foreach($previousTitles as $title){
+            $prevTitleString .= $title . ", ";
+        }
+
+        $prompt = "You're looking to use the following tech specifications to build a new side project: \"{$this->form->getState()["data"]["TechSpecs"]}\".
+                     These tech specifications could be what certain tech to use, architecture patterns, rough ideas for the project itself, etc...
+                     What sort of app would you build that that could be turned into a profitable SaaS? Please also give a title for the application and don't speak in the first person
                      when describing the idea. 
-                     Give the title first followed by the idea. Format the response as a valid JSON object that looks like the following:
-                     {
-                     \"Title\": ...,
-                     \"Idea\": ...
-                     }
+                     Give the title first followed by the idea. Format the response as a valid JSON object that looks like the following and be sure to remove any new-line characters:
+                     {\"Title\": , \"Idea\":}
                      At the end of the Idea value please describe how you would start going about implementing the idea with the given tech specifications but don't speak in the first person.
-                     ";
+                     Also, given the following titles ensure the newly generated title is unique {$prevTitleString}";
 
 
-        $result = OpenAI::chat()->create([
-            'model' => 'gpt-3.5-turbo-0125',
+        if($retry){
+            $prompt = $prompt . " YOU NEED TO ENSURE THE JSON object IS VALID JSON AND IN THE SPECIFIED FORM.";
+        }
+
+        return OpenAI::chat()->create([
+            'model' => 'gpt-4',
             'messages' => [
+                ['role' => 'system', 'content' => "You are a {$this->form->getState()["data"]["DeveloperLevel"]} level software engineer"],
                 ['role' => 'user', 'content' => $prompt],
             ],
         ]);
-
-        $decodedContent = json_decode($result->choices[0]->message->content, true);
-        //dd($result->choices[0]->message->content);
-        Project::create([
-            "user_id" => auth()->id(),
-            "DeveloperLevel" => $this->form->getState()["data"]["DeveloperLevel"],
-            "TechSpecs" => $this->form->getState()["data"]["TechSpecs"],
-            "GeneratedProjectTitle" => $decodedContent["Title"],
-            "GeneratedIdea" => $decodedContent["Idea"],
-        ]);
-
-        Notification::make()
-            ->title('Saved successfully')
-            ->success()
-            ->color('success')
-            ->duration(5000)
-            ->send();
-        
-        $this->redirect('/dashboard');
     }
 
     public function render()
     {
-        return view('livewire.create-project');
+        return view('livewire.project.create-project');
     }
 }
