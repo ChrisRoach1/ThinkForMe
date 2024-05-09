@@ -22,6 +22,8 @@ Route::view('profile', 'profile')
     ->middleware(['auth'])
     ->name('profile');
 
+Route::view('refund', 'Refund')
+    ->name('refund');
 
 Route::get('/checkout', function (Request $request) {
     $stripePriceId = env('STRIPE_PRODUCT_KEY', '');

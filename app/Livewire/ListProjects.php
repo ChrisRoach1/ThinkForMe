@@ -56,6 +56,7 @@ class ListProjects extends Component implements HasForms, HasTable
                 Action::make('Create Image')
                     ->requiresConfirmation()
                     ->iconButton()
+                    ->tooltip("generate icon")
                     ->icon('heroicon-m-cog')
                     ->modalHeading('Create Image')
                     ->modalDescription("Creating an image will cost you {$this->creditCost} credits, are you sure?")
@@ -110,7 +111,7 @@ class ListProjects extends Component implements HasForms, HasTable
         $this->redirect('/create-image');
     }
 
-    public function render()
+    public function render(): view
     {
         return view('livewire.project.list-projects');
     }

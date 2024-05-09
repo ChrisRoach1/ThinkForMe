@@ -2,8 +2,6 @@
 
 namespace App\Livewire;
 
-use App\Enums\DeveloperLevel;
-use App\Models\Image;
 use App\Models\Project;
 use Filament\Actions\Contracts\HasActions;
 use Filament\Forms\Components\Actions;
@@ -11,20 +9,15 @@ use Filament\Forms\Components\Actions\Action;
 use Filament\Forms\Components\Section;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
-use Filament\Forms\Components\TextInput;
-use Filament\Forms\Components\MarkdownEditor;
-use Filament\Forms\Components\Wizard;
 use Filament\Forms\Concerns\InteractsWithForms;
 use Filament\Forms\Contracts\HasForms;
 use Filament\Forms\Form;
 use Filament\Notifications\Notification;
-use Illuminate\Support\Facades\Storage;
 use JetBrains\PhpStorm\NoReturn;
 use Livewire\Component;
 use Filament\Actions\Concerns\InteractsWithActions;
 use OpenAI\Laravel\Facades\OpenAI;
 use OpenAI\Responses\Chat\CreateResponse;
-use phpDocumentor\Reflection\DocBlock\Description;
 
 class CreateProject extends Component implements HasForms, HasActions
 {
@@ -62,7 +55,7 @@ class CreateProject extends Component implements HasForms, HasActions
                                 Action::make('Create')
                                     ->requiresConfirmation()
                                     ->modalHeading('Create Image')
-                                    ->modalDescription("Creating an image will cost you {$this->creditCost} credits, are you sure?")
+                                    ->modalDescription("Creating an image will cost you {$this->creditCost} credit, are you sure?")
                                     ->modalSubmitActionLabel('Yes, generate it')
                                     ->action(fn() => $this->create())
                             ])
