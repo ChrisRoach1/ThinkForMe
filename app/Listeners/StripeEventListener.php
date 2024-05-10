@@ -27,7 +27,7 @@ class StripeEventListener
 
         Log::debug('userID: '. $event->payload['data']['object']['metadata']['user_id']);
         Log::debug('payload type: '. $event->payload['type']);
-        if($event->payload['type'] === 'invoice.payment_succeeded') {
+        if($event->payload['type'] === 'payment_intent.succeeded') {
             $userID = $event->payload['data']['object']['metadata']['user_id'] ?? null;
 
             if($userID === null) {
