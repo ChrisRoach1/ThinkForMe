@@ -33,6 +33,9 @@ Route::get('/checkout', function (Request $request) {
     return $request->user()->checkout([$stripePriceId => $quantity], [
         'success_url' => route('checkout-success').'?session_id={CHECKOUT_SESSION_ID}',
         'cancel_url' => route('dashboard'),
+        'payment_intent_data' => ['metadata' => [
+            'user_id' => auth()->id(), 'product_key' => $stripePriceId
+        ]],
         'metadata' => ['user_id' => auth()->id(), 'product_key' => $stripePriceId],
     ]);
 })->middleware(['auth', 'verified'])->name('checkout');
