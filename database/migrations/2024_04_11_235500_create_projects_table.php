@@ -17,7 +17,7 @@ return new class extends Migration
             $table->string('DeveloperLevel');
             $table->string('TechSpecs', 500);
             $table->string('GeneratedProjectTitle')->nullable();
-            $table->string('GeneratedIdea')->nullable();
+            $table->text('GeneratedIdea')->nullable();
             $table->timestamps();
         });
     }
