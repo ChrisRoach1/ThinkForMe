@@ -25,7 +25,6 @@ class CreateImage extends Component implements HasForms, HasActions
     use InteractsWithActions;
 
     public int $creditCost = 3;
-    public int $overrideCreditCost = 4;
     public ?array $data = [];
     public Image $image;
 
@@ -57,7 +56,8 @@ class CreateImage extends Component implements HasForms, HasActions
                                 Action::make('Create')
                                     ->requiresConfirmation()
                                     ->modalHeading('Create Image')
-                                    ->modalDescription("This will cost you {$this->creditCost} credits or {$this->overrideCreditCost} credits for override images, are you sure?")
+                                    ->disabled(auth()->user()->credits < $this->creditCost)
+                                    ->modalDescription("This will cost you {$this->creditCost} credits, are you sure?")
                                     ->modalSubmitActionLabel('Yes, generate it')
                                     ->action(fn() => $this->create())
                             ])

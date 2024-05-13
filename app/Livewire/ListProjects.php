@@ -59,6 +59,7 @@ class ListProjects extends Component implements HasForms, HasTable
                     ->tooltip("generate icon")
                     ->icon('heroicon-m-cog')
                     ->modalHeading('Create Image')
+                    ->disabled(auth()->user()->credits < $this->creditCost)
                     ->modalDescription("Creating an image will cost you {$this->creditCost} credits, are you sure?")
                     ->modalSubmitActionLabel('Yes, generate it')
                     ->action(fn (Project $record) => $this->createImage($record->GeneratedIdea)),

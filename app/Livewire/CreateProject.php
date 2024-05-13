@@ -55,6 +55,7 @@ class CreateProject extends Component implements HasForms, HasActions
                                 Action::make('Create')
                                     ->requiresConfirmation()
                                     ->modalHeading('Create Image')
+                                    ->disabled(auth()->user()->credits < $this->creditCost)
                                     ->modalDescription("Creating an image will cost you {$this->creditCost} credit, are you sure?")
                                     ->modalSubmitActionLabel('Yes, generate it')
                                     ->action(fn() => $this->create())
@@ -129,7 +130,7 @@ class CreateProject extends Component implements HasForms, HasActions
         $prompt = "You're looking to use the following tech specifications to build a new side project: \"{$this->form->getState()["data"]["TechSpecs"]}\".
                      These tech specifications could be what certain tech to use, architecture patterns, rough ideas for the project itself, etc...
                      What sort of app would you build that that could be turned into a profitable SaaS? Please also give a title for the application and don't speak in the first person
-                     when describing the idea. 
+                     when describing the idea. Be sure to keep the idea at 2000 characters or less.
                      Give the title first followed by the idea. Format the response as a valid JSON object that looks like the following and be sure to remove any new-line characters:
                      {\"Title\": , \"Idea\":}
                      At the end of the Idea value please describe how you would start going about implementing the idea with the given tech specifications but don't speak in the first person.
@@ -141,7 +142,7 @@ class CreateProject extends Component implements HasForms, HasActions
         }
 
         return OpenAI::chat()->create([
-            'model' => 'gpt-4',
+            'model' => 'gpt-4o',
             'messages' => [
                 ['role' => 'system', 'content' => "You are a {$this->form->getState()["data"]["DeveloperLevel"]} level software engineer"],
                 ['role' => 'user', 'content' => $prompt],
