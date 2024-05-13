@@ -13,6 +13,7 @@ use Filament\Forms\Concerns\InteractsWithForms;
 use Filament\Forms\Contracts\HasForms;
 use Filament\Forms\Form;
 use Filament\Notifications\Notification;
+use Illuminate\Support\Facades\Log;
 use JetBrains\PhpStorm\NoReturn;
 use Livewire\Component;
 use Filament\Actions\Concerns\InteractsWithActions;
@@ -75,46 +76,51 @@ class CreateProject extends Component implements HasForms, HasActions
     #[NoReturn]
     public function create(): void
     {
-        $result = $this->CallPrompt();
-        $decodedContent = json_decode($result->choices[0]->message->content, true);
-        $retryCount = 0;
-
-        while($decodedContent == null && $retryCount < 4){
-            $result = $this->callPrompt(true);
+        try{
+            $result = $this->CallPrompt();
             $decodedContent = json_decode($result->choices[0]->message->content, true);
-            $retryCount++;
+            $retryCount = 0;
+
+            while($decodedContent == null && $retryCount < 4){
+                $result = $this->callPrompt(true);
+                $decodedContent = json_decode($result->choices[0]->message->content, true);
+                $retryCount++;
+            }
+
+            if($decodedContent == null){
+                Notification::make()
+                    ->title('An error has occurred')
+                    ->body("Can't generate project at this time, please try again.")
+                    ->danger()
+                    ->color('danger')
+                    ->duration(5000)
+                    ->send();
+
+                $this->redirect('/dashboard');
+            }else{
+                Project::create([
+                    "user_id" => auth()->id(),
+                    "DeveloperLevel" => $this->form->getState()["data"]["DeveloperLevel"],
+                    "TechSpecs" => $this->form->getState()["data"]["TechSpecs"],
+                    "GeneratedProjectTitle" => $decodedContent["Title"],
+                    "GeneratedIdea" => $decodedContent["Idea"],
+                ]);
+
+                auth()->user()->decrement('credits', $this->creditCost);
+
+                Notification::make()
+                    ->title('Saved successfully')
+                    ->success()
+                    ->color('success')
+                    ->duration(5000)
+                    ->send();
+
+                $this->redirect('/dashboard');
+            }
+        }catch (\Exception $ex){
+            Log::error($ex->getMessage());
         }
 
-        if($decodedContent == null){
-            Notification::make()
-                ->title('An error has occurred')
-                ->body("Can't generate project at this time, please try again.")
-                ->danger()
-                ->color('danger')
-                ->duration(5000)
-                ->send();
-
-            $this->redirect('/dashboard');
-        }else{
-            Project::create([
-                "user_id" => auth()->id(),
-                "DeveloperLevel" => $this->form->getState()["data"]["DeveloperLevel"],
-                "TechSpecs" => $this->form->getState()["data"]["TechSpecs"],
-                "GeneratedProjectTitle" => $decodedContent["Title"],
-                "GeneratedIdea" => $decodedContent["Idea"],
-            ]);
-
-            auth()->user()->decrement('credits', $this->creditCost);
-
-            Notification::make()
-                ->title('Saved successfully')
-                ->success()
-                ->color('success')
-                ->duration(5000)
-                ->send();
-
-            $this->redirect('/dashboard');
-        }
     }
 
     private function CallPrompt($retry = false): CreateResponse
