@@ -56,7 +56,7 @@ class CreateProject extends Component implements HasForms, HasActions
                                 Action::make('Create')
                                     ->requiresConfirmation()
                                     ->modalHeading('Create Image')
-                                    ->disabled(auth()->user()->credits < $this->creditCost)
+                                    ->disabled(!auth()->user()->canGenerate($this->creditCost))
                                     ->modalDescription("Creating an image will cost you {$this->creditCost} credit, are you sure?")
                                     ->modalSubmitActionLabel('Yes, generate it')
                                     ->action(fn() => $this->create())
@@ -106,7 +106,7 @@ class CreateProject extends Component implements HasForms, HasActions
                     "GeneratedIdea" => $decodedContent["Idea"],
                 ]);
 
-                auth()->user()->decrement('credits', $this->creditCost);
+                auth()->user()->decrementCredits($this->creditCost);
 
                 Notification::make()
                     ->title('Saved successfully')

@@ -6,6 +6,7 @@ use App\Models\Image;
 use Filament\Forms\Components\Checkbox;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Livewire\Component;
 use Filament\Actions\Contracts\HasActions;
 use Filament\Forms\Components\Actions;
@@ -51,13 +52,13 @@ class CreateImage extends Component implements HasForms, HasActions
                                 ->required()
                                 ->maxLength(500),
                             Checkbox::make('override')
-                                ->helperText("Override default prompt and enter your own prompt in the style field (total control)")
+                                ->helperText("Take full control and enter your own prompt in the style field.")
                                 ->required(),
                             Actions::make([
                                 Action::make('Create')
                                     ->requiresConfirmation()
                                     ->modalHeading('Create Image')
-                                    ->disabled(auth()->user()->credits < $this->creditCost)
+                                    ->disabled(!auth()->user()->canGenerate($this->creditCost))
                                     ->modalDescription("This will cost you {$this->creditCost} credits, are you sure?")
                                     ->modalSubmitActionLabel('Yes, generate it')
                                     ->action(fn() => $this->create())
@@ -83,7 +84,7 @@ class CreateImage extends Component implements HasForms, HasActions
                 $result = $this->CallPrompt();
             }
 
-            $fileName = auth()->id() . '_' . date('y-m-d') . '_' . rand(0, 5000) . '.jpg';
+            $fileName = Str::uuid()->toString() . auth()->id() . '_' . date('y-m-d') . '_' . rand(0, 5000) . '.jpg';
             $imageUrl = env('CLOUDFLARE_PUBLIC_URL', '') . '/thinkforme/' . $fileName;
             $data = base64_decode($result->data[0]["b64_json"]);
             Storage::disk('r2')->put(path: $fileName, contents: $data);
@@ -98,7 +99,7 @@ class CreateImage extends Component implements HasForms, HasActions
                 "Model" => "dall-e-3"
             ]);
 
-            auth()->user()->decrement('credits', $overrideActive ? $this->overrideCreditCost : $this->creditCost);
+            auth()->user()->decrementCredits($this->creditCost);
 
             Notification::make()
                 ->title('Saved successfully')

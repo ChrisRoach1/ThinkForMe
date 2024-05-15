@@ -59,7 +59,7 @@ class ListProjects extends Component implements HasForms, HasTable
                     ->tooltip("generate icon")
                     ->icon('heroicon-m-cog')
                     ->modalHeading('Create Image')
-                    ->disabled(auth()->user()->credits < $this->creditCost)
+                    ->disabled(!auth()->user()->canGenerate($this->creditCost))
                     ->modalDescription("Creating an image will cost you {$this->creditCost} credits, are you sure?")
                     ->modalSubmitActionLabel('Yes, generate it')
                     ->action(fn (Project $record) => $this->createImage($record->GeneratedIdea)),
@@ -100,7 +100,7 @@ class ListProjects extends Component implements HasForms, HasTable
             "Model" => "dall-e-3"
         ]);
 
-        auth()->user()->decrement('credits', $this->creditCost);
+        auth()->user()->decrementCredits($this->creditCost);
 
         Notification::make()
             ->title('Saved successfully')

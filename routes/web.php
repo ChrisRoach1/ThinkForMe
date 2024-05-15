@@ -25,6 +25,12 @@ Route::view('profile', 'profile')
 Route::view('refund', 'Refund')
     ->name('refund');
 
+Route::view('privacy', 'Privacy')
+    ->name('privacy');
+
+Route::view('terms', 'Terms')
+    ->name('terms');
+
 Route::get('/checkout', function (Request $request) {
     $stripePriceId = env('STRIPE_PRODUCT_KEY', '');
 

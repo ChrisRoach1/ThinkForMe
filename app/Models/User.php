@@ -57,4 +57,12 @@ class User extends Authenticatable
     {
         return $this->hasMany(Purchase::class);
     }
+
+    public function decrementCredits($amount){
+        $this->decrement('credits', $amount);
+    }
+
+    public function canGenerate($creditAmount): bool{
+        return $this->credits >= $creditAmount;
+    }
 }
