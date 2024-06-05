@@ -5,6 +5,7 @@
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <meta name="csrf-token" content="{{ csrf_token() }}">
         <meta name="description" content="Generate your next million dollar idea with AI. Using GPT-4 and DALL-E-3, quickly generate project ideas and custom icons to go with it.">
+        <link rel="icon" type="image/x-icon" href="">
         <title>
             @isset($title)
                 {{ $title }} |
