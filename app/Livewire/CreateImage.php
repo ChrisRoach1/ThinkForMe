@@ -76,44 +76,44 @@ class CreateImage extends Component implements HasForms, HasActions
     public function create(): void
     {
         try{
-            $overrideActive = $this->form->getState()["data"]["override"];
+            if(auth()->user()->credits >= $this->creditCost){
+                $overrideActive = $this->form->getState()["data"]["override"];
 
-            if($overrideActive) {
-                $result = $this->CallOverridePrompt();
-            }else{
-                $result = $this->CallPrompt();
+                if($overrideActive) {
+                    $result = $this->CallOverridePrompt();
+                }else{
+                    $result = $this->CallPrompt();
+                }
+
+                $fileName = Str::uuid()->toString() . auth()->id() . '_' . date('y-m-d') . '_' . rand(0, 5000) . '.jpg';
+                $imageUrl = env('CLOUDFLARE_PUBLIC_URL', '') . '/thinkforme/' . $fileName;
+                $data = base64_decode($result->data[0]["b64_json"]);
+                Storage::disk('r2')->put(path: $fileName, contents: $data);
+
+                Image::create([
+                    "user_id" => auth()->id(),
+                    "Description" => $overrideActive ? "" : $this->form->getState()["data"]["Description"],
+                    "Color" => $this->form->getState()["data"]["Color"],
+                    "Style" => $this->form->getState()["data"]["Style"],
+                    'ImageURL' => $imageUrl,
+                    'ImageName' => $fileName,
+                    "Model" => "dall-e-3"
+                ]);
+
+                auth()->user()->decrementCredits($this->creditCost);
+
+                Notification::make()
+                    ->title('Saved successfully')
+                    ->success()
+                    ->color('success')
+                    ->duration(5000)
+                    ->send();
+
+                $this->redirect('/create-image');
             }
-
-            $fileName = Str::uuid()->toString() . auth()->id() . '_' . date('y-m-d') . '_' . rand(0, 5000) . '.jpg';
-            $imageUrl = env('CLOUDFLARE_PUBLIC_URL', '') . '/thinkforme/' . $fileName;
-            $data = base64_decode($result->data[0]["b64_json"]);
-            Storage::disk('r2')->put(path: $fileName, contents: $data);
-
-            Image::create([
-                "user_id" => auth()->id(),
-                "Description" => $overrideActive ? "" : $this->form->getState()["data"]["Description"],
-                "Color" => $this->form->getState()["data"]["Color"],
-                "Style" => $this->form->getState()["data"]["Style"],
-                'ImageURL' => $imageUrl,
-                'ImageName' => $fileName,
-                "Model" => "dall-e-3"
-            ]);
-
-            auth()->user()->decrementCredits($this->creditCost);
-
-            Notification::make()
-                ->title('Saved successfully')
-                ->success()
-                ->color('success')
-                ->duration(5000)
-                ->send();
-
-            $this->redirect('/create-image');
         }catch (\Exception $ex){
             Log::error($ex->getMessage());
         }
-
-
     }
 
     private function CallPrompt(): CreateResponse

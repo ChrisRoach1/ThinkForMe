@@ -77,53 +77,68 @@ class CreateProject extends Component implements HasForms, HasActions
     public function create(): void
     {
         try{
-            $result = $this->CallPrompt();
-            $decodedContent = json_decode($result->choices[0]->message->content, true);
-            $retryCount = 0;
+            if(auth()->user()->credits >= $this->creditCost){
+                $projectDescriptionResponse = $this->CallContentPrompt();
+                $projectTitleResponse = $this->CallTitlePrompt($projectDescriptionResponse->choices[0]->message->content);
 
-            while($decodedContent == null && $retryCount < 4){
-                $result = $this->callPrompt(true);
-                $decodedContent = json_decode($result->choices[0]->message->content, true);
-                $retryCount++;
-            }
+                $descriptionContent = $projectDescriptionResponse->choices[0]->message->content;
+                $titleContent = $projectTitleResponse->choices[0]->message->content;
 
-            if($decodedContent == null){
-                Notification::make()
-                    ->title('An error has occurred')
-                    ->body("Can't generate project at this time, please try again.")
-                    ->danger()
-                    ->color('danger')
-                    ->duration(5000)
-                    ->send();
+                if($descriptionContent == null || $titleContent == null){
+                    Notification::make()
+                        ->title('An error has occurred')
+                        ->body("Can't generate project at this time, please try again.")
+                        ->danger()
+                        ->color('danger')
+                        ->duration(5000)
+                        ->send();
 
-                $this->redirect('/dashboard');
-            }else{
-                Project::create([
-                    "user_id" => auth()->id(),
-                    "DeveloperLevel" => $this->form->getState()["data"]["DeveloperLevel"],
-                    "TechSpecs" => $this->form->getState()["data"]["TechSpecs"],
-                    "GeneratedProjectTitle" => $decodedContent["Title"],
-                    "GeneratedIdea" => $decodedContent["Idea"],
-                ]);
+                    $this->redirect('/dashboard');
+                }else{
+                    Project::create([
+                        "user_id" => auth()->id(),
+                        "DeveloperLevel" => $this->form->getState()["data"]["DeveloperLevel"],
+                        "TechSpecs" => $this->form->getState()["data"]["TechSpecs"],
+                        "GeneratedProjectTitle" => $titleContent,
+                        "GeneratedIdea" => $descriptionContent
+                    ]);
 
-                auth()->user()->decrementCredits($this->creditCost);
+                    auth()->user()->decrementCredits($this->creditCost);
 
-                Notification::make()
-                    ->title('Saved successfully')
-                    ->success()
-                    ->color('success')
-                    ->duration(5000)
-                    ->send();
+                    Notification::make()
+                        ->title('Saved successfully')
+                        ->success()
+                        ->color('success')
+                        ->duration(5000)
+                        ->send();
 
-                $this->redirect('/dashboard');
+                    $this->redirect('/dashboard');
+                }
             }
         }catch (\Exception $ex){
             Log::error($ex->getMessage());
         }
-
     }
 
-    private function CallPrompt($retry = false): CreateResponse
+    private function CallContentPrompt(): CreateResponse
+    {
+
+        $prompt = "You're looking to use the following tech specifications to build a new side project: \"{$this->form->getState()["data"]["TechSpecs"]}\".
+                     These tech specifications could be what certain tech to use, architecture patterns, rough ideas for the project itself, etc... If it's just a rough idea with no technology specified, please advise on the best approach.
+                     What sort of app would you build that that could be turned into a profitable SaaS? Please don't speak in the first person
+                     when describing the idea. Be sure to keep the idea at 2000 characters or less. Give JUST THE IDEA with no special characters or prefixes at the beginning. Please remove any new line characters as well.
+                    At the end of the Idea value please describe how you would start going about implementing the idea with the given tech specifications but don't speak in the first person.";
+
+        return OpenAI::chat()->create([
+            'model' => 'gpt-4o',
+            'messages' => [
+                ['role' => 'system', 'content' => "You are a {$this->form->getState()["data"]["DeveloperLevel"]} level software engineer"],
+                ['role' => 'user', 'content' => $prompt],
+            ],
+        ]);
+    }
+
+    private function CallTitlePrompt($projectIdea): CreateResponse
     {
 
         $previousTitles = auth()->user()->projects()->pluck('GeneratedProjectTitle');
@@ -133,19 +148,9 @@ class CreateProject extends Component implements HasForms, HasActions
             $prevTitleString .= $title . ", ";
         }
 
-        $prompt = "You're looking to use the following tech specifications to build a new side project: \"{$this->form->getState()["data"]["TechSpecs"]}\".
-                     These tech specifications could be what certain tech to use, architecture patterns, rough ideas for the project itself, etc...
-                     What sort of app would you build that that could be turned into a profitable SaaS? Please also give a title for the application and don't speak in the first person
-                     when describing the idea. Be sure to keep the idea at 2000 characters or less.
-                     Give the title first followed by the idea. Format the response as a valid JSON object that looks like the following and be sure to remove any new-line characters:
-                     {\"Title\": , \"Idea\":}
-                     At the end of the Idea value please describe how you would start going about implementing the idea with the given tech specifications but don't speak in the first person.
+        $prompt = "You're looking to give a name to your side project with the following description: \"{$projectIdea}\".
+                    Please give JUST the title and don't speak in the first person. Give JUST THE TITLE with no special characters or prefixes.
                      Also, given the following titles ensure the newly generated title is unique {$prevTitleString}";
-
-
-        if($retry){
-            $prompt = $prompt . " YOU NEED TO ENSURE THE JSON object IS VALID JSON AND IN THE SPECIFIED FORM.";
-        }
 
         return OpenAI::chat()->create([
             'model' => 'gpt-4o',
