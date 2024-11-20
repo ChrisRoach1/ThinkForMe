@@ -55,9 +55,9 @@ class CreateProject extends Component implements HasForms, HasActions
                             Actions::make([
                                 Action::make('Create')
                                     ->requiresConfirmation()
-                                    ->modalHeading('Create Image')
+                                    ->modalHeading('Create Project')
                                     ->disabled(!auth()->user()->canGenerate($this->creditCost))
-                                    ->modalDescription("Creating an image will cost you {$this->creditCost} credit, are you sure?")
+                                    ->modalDescription("Creating a project will cost you {$this->creditCost} credit, are you sure?")
                                     ->modalSubmitActionLabel('Yes, generate it')
                                     ->action(fn() => $this->create())
                             ])
