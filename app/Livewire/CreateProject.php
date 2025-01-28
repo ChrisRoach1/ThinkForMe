@@ -3,6 +3,7 @@
 namespace App\Livewire;
 
 use App\Models\Project;
+use App\Services\DeepSeekService;
 use Filament\Actions\Contracts\HasActions;
 use Filament\Forms\Components\Actions;
 use Filament\Forms\Components\Actions\Action;
@@ -29,7 +30,7 @@ class CreateProject extends Component implements HasForms, HasActions
     public Project $project;
     public ?array $data = [];
 
-    public function mount(): void
+    public function mount(DeepSeekService $deepseekService): void
     {
         $this->form->fill();
     }
@@ -128,6 +129,8 @@ class CreateProject extends Component implements HasForms, HasActions
                      What sort of app would you build that that could be turned into a profitable SaaS? Please don't speak in the first person
                      when describing the idea. Be sure to keep the idea at 2000 characters or less. Give JUST THE IDEA with no special characters or prefixes at the beginning. Please remove any new line characters as well.
                     At the end of the Idea value please describe how you would start going about implementing the idea with the given tech specifications but don't speak in the first person.";
+
+
 
         return OpenAI::chat()->create([
             'model' => 'gpt-4o',
